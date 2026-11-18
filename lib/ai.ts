@@ -34,7 +34,7 @@ export async function askClaude(options: {
     const response = await anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: options.maxTokens ?? 500,
-      temperature: options.temperature ?? 0.5,
+      //temperature: options.temperature ?? 0.5,
       system: options.system,
       messages: options.messages,
     });
