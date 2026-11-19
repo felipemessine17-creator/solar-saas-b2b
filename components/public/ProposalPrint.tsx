@@ -1,5 +1,3 @@
-"use client";
-
 import { Leaf, Sun } from "lucide-react";
 import { formatBRL, formatDate, formatNumber, formatPhoneBR, readableTextColor, safeColor } from "@/lib/format";
 import { ASSUMPTIONS, type SimulationResult } from "@/lib/solar";
@@ -17,6 +15,22 @@ interface Props {
   result: SimulationResult;
   text: string;
   tariffKwh: number;
+}
+
+const NEXT_STEPS: [string, string][] = [
+  ["Visita técnica", "Avaliamos o telhado, o padrão de entrada e confirmamos o dimensionamento."],
+  ["Projeto e homologação", "Cuidamos do projeto elétrico e de toda a aprovação na distribuidora."],
+  ["Instalação e economia", "Instalamos o sistema e você começa a gerar a sua própria energia."],
+];
+
+/** Remove qualquer resquício de formatação/meta-texto antes de imprimir. */
+function cleanParagraphs(text: string): string[] {
+  return text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\*\*|__|`|^#{1,6}\s+/gm, "")
+    .split(/\n+/)
+    .map((p) => p.replace(/^\s*[-•*]\s+/, "").trim())
+    .filter(Boolean);
 }
 
 /**
@@ -132,14 +146,11 @@ export default function ProposalPrint({
           <h2 className="mb-2 text-sm font-bold uppercase tracking-wide" style={{ color: brand }}>
             Apresentação
           </h2>
-          {text
-            .split(/\n{2,}|\n/)
-            .filter((p) => p.trim())
-            .map((paragraph, i) => (
-              <p key={i} className="mb-2 text-justify text-[12.5px]">
-                {paragraph.trim()}
-              </p>
-            ))}
+          {cleanParagraphs(text).map((paragraph, i) => (
+            <p key={i} className="mb-2 text-justify text-[12.5px]">
+              {paragraph}
+            </p>
+          ))}
         </section>
 
         {/* Tabelas */}
@@ -186,15 +197,25 @@ export default function ProposalPrint({
           </p>
         </section>
 
-        {/* Condições */}
-        {profile.faq_rules?.trim() && (
-          <section className="avoid-break mt-5">
-            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide" style={{ color: brand }}>
-              Condições e informações da empresa
-            </h2>
-            <p className="whitespace-pre-wrap text-[11.5px] text-slate-700">{profile.faq_rules.trim()}</p>
-          </section>
-        )}
+        {/* Próximos passos (texto fixo e comercial — o FAQ/regras internas da empresa NUNCA são impressos) */}
+        <section className="avoid-break mt-5">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide" style={{ color: brand }}>
+            Próximos passos
+          </h2>
+          <ol className="grid grid-cols-3 gap-3 text-[11.5px] text-slate-700">
+            {NEXT_STEPS.map(([title, description], i) => (
+              <li key={title} className="rounded-lg border border-slate-200 p-3">
+                <p className="font-semibold text-slate-900">
+                  <span className="mr-1" style={{ color: brand }}>
+                    {i + 1}.
+                  </span>
+                  {title}
+                </p>
+                <p className="mt-0.5">{description}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
 
         {/* Rodapé */}
         <footer className="avoid-break mt-6 border-t border-slate-200 pt-4 text-[10px] text-slate-500">
