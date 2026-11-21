@@ -1,46 +1,45 @@
-/* =============================================================================
- * ARQUIVO: app/api/ai/chat/route.ts
- * -----------------------------------------------------------------------------
+/* ==========================================================================
+ * ARQUIVO 10 de 17: app/api/ai/chat/route.ts   [ARQUIVO ALTERADO (substituir)]
+ * Recurso: teste grátis de 7 dias + bloqueio + Mercado Pago
+ *
  * ONDE FICA NO SEU PROJETO (painel EXPLORER do VS Code, à esquerda):
+ * solar-saas/   (pasta raiz do projeto)
+ *    └── app/
+ *         └── api/
+ *              └── ai/
+ *                   └── chat/
+ *                        └── route.ts   <── ESTE ARQUIVO
  *
- *   solar-saas/
- *    ├── app/
- *    │    ├── api/
- *    │    │    ├── ai/
- *    │    │    │    ├── chat/
- *    │    │    │    │    └── route.ts   <── ESTE ARQUIVO
- *    │    │    │    └── proposal/
- *    │    │    │         └── route.ts   (NÃO é este! é o da pasta "proposal")
- *    │    │    └── leads/
- *    │    └── ...
- *    ├── components/
- *    └── lib/
+ * ATENÇÃO: Existem vários arquivos route.ts no projeto: este é o da pasta "ai/chat".
  *
- * COMO SUBSTITUIR (passo a passo):
- *   1. No VS Code, abra o painel EXPLORER (Ctrl+Shift+E).
- *   2. Abra a pasta "app", depois "api", depois "ai" e por fim "chat".
- *   3. Dê dois cliques no arquivo "route.ts" para abri-lo.
- *   4. Clique dentro do arquivo e aperte Ctrl+A (seleciona tudo).
- *   5. Aperte Delete para apagar todo o conteúdo antigo.
- *   6. Copie TODO o conteúdo deste arquivo novo (inclusive este comentário)
- *      e cole lá com Ctrl+V.
- *   7. Salve com Ctrl+S.
+ * PASSO A PASSO:
+ *   1. No painel EXPLORER (Ctrl+Shift+E), abra a pasta "app/api/ai/chat" e dê dois cliques em route.ts.
+ *   2. Clique dentro do arquivo, aperte Ctrl+A e depois Delete (apaga o conteúdo antigo).
+ *   3. Cole TODO o conteúdo deste arquivo (inclusive este comentário) > Ctrl+S.
  *
- * IMPORTANTE (para não quebrar o projeto):
- *   - NÃO crie um arquivo novo e NÃO arraste o arquivo baixado para outra pasta.
- *     Só substitua o conteúdo do arquivo que já existe, no caminho acima.
- *   - Se o navegador baixou com outro nome (ex.: "route (1).ts"),
- *     não use esse arquivo direto: abra, copie o conteúdo e cole no arquivo
- *     original, seguindo os passos acima.
- *   - Substitua os 5 arquivos da correção JUNTOS. Eles dependem um do outro:
- *       lib/ai-content.ts
- *       app/api/ai/chat/route.ts
- *       app/api/ai/proposal/route.ts
- *       components/public/ProposalPrint.tsx
- *       app/[slug]/page.tsx
- *   - Depois de trocar todos, pare o servidor (Ctrl+C no terminal) e rode
- *     de novo: npm run dev
- * ============================================================================= */
+ * PARA NÃO QUEBRAR O PROJETO:
+ *   - Instale os 17 arquivos JUNTOS (eles dependem um do outro):
+ *    1. supabase/billing.sql  (NOVO)
+ *    2. .env.local.example
+ *    3. lib/types.ts
+ *    4. lib/subscription.ts  (NOVO)
+ *    5. lib/mercadopago.ts  (NOVO)
+ *    6. lib/supabase/admin.ts  (NOVO)
+ *    7. app/api/checkout/route.ts  (NOVO)
+ *    8. app/api/webhooks/mercadopago/route.ts  (NOVO)
+ *    9. app/api/leads/route.ts
+ *   10. app/api/ai/chat/route.ts
+ *   11. app/api/ai/proposal/route.ts
+ *   12. app/dashboard/page.tsx
+ *   13. app/dashboard/assinatura/page.tsx  (NOVO)
+ *   14. app/[slug]/page.tsx
+ *   15. components/billing/PricingPlans.tsx  (NOVO)
+ *   16. components/billing/SubscriptionExpired.tsx  (NOVO)
+ *   17. components/dashboard/DashboardShell.tsx
+ *   - Não use arquivos com nome trocado pelo navegador, como "route (1).ts":
+ *     copie o conteúdo e cole no arquivo com o nome certo.
+ *   - No fim, pare o servidor (Ctrl+C no terminal) e rode: npm run dev
+ * ========================================================================== */
 
 import { NextResponse } from "next/server";
 import { askClaude, type ChatMessage } from "@/lib/ai";
@@ -53,6 +52,7 @@ import {
 import { fetchPublicProfile } from "@/lib/profiles";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { calculateSimulation, paramsFromProfile } from "@/lib/solar";
+import { isProfileActive } from "@/lib/subscription";
 import { cleanText, parseSimulationPayload } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -101,6 +101,14 @@ export async function POST(request: Request) {
   const profile = await fetchPublicProfile(slug);
   if (!profile) {
     return NextResponse.json({ reply: "Empresa não encontrada.", source: "error" }, { status: 404 });
+  }
+
+  // Conta com teste/assinatura vencida: não gasta IA
+  if (!isProfileActive(profile)) {
+    return NextResponse.json(
+      { reply: "Este atendimento está temporariamente indisponível. Entre em contato diretamente com a empresa.", source: "inactive" },
+      { status: 403 }
+    );
   }
 
   // Contexto opcional da simulação (recalculado no servidor)
